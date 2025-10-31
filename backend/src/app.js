@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import connectDB from './utils/database.js';
 import errorHandler from './middleware/errorHandler.js';
 
@@ -10,6 +12,10 @@ import authRoutes from './routes/auth.js';
 import chatRoutes from './routes/chat.js';
 import userRoutes from './routes/user.js';
 import recommendationRoutes from './routes/recommendations.js';
+
+// ES module fix for __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Load environment variables
 dotenv.config();
@@ -43,13 +49,24 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/recommendations', recommendationRoutes);
 
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Route not found'
+// Serve static files from the React app build directory in production
+if (process.env.NODE_ENV === 'production') {
+  // Serve static files from the frontend build directory
+  app.use(express.static(path.join(__dirname, '../../frontend/dist')));
+  
+  // Handle React routing, return all requests to React app
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'));
   });
-});
+} else {
+  // 404 handler for development
+  app.use('*', (req, res) => {
+    res.status(404).json({
+      success: false,
+      message: 'Route not found'
+    });
+  });
+}
 
 // Error handling middleware
 app.use(errorHandler);
